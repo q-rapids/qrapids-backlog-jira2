@@ -1,0 +1,60 @@
+buildscript {
+    ext {
+        snippetsDir = file('build/generated-snippets')
+    }
+    repositories {
+        mavenCentral()
+        jcenter()
+    }
+    dependencies {
+        classpath("org.springframework.boot:spring-boot-gradle-plugin:2.1.6.RELEASE")
+        classpath 'org.asciidoctor:asciidoctor-gradle-plugin:1.5.9.2'
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'idea'
+apply plugin: 'org.springframework.boot'
+apply plugin: 'io.spring.dependency-management'
+apply plugin: 'war'
+apply plugin: 'org.asciidoctor.convert'
+
+group 'org.example'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile('org.springframework.boot:spring-boot-starter-actuator')
+    compile('org.springframework.boot:spring-boot-starter-web')
+    compile ('org.nuiton.thirdparty:REngine:1.7-3')
+    compile ('org.nuiton.thirdparty:Rserve:1.7-3')
+    runtime('org.springframework.boot:spring-boot-devtools')
+
+    implementation group: 'com.google.code.gson', name: 'gson', version: '2.3.1'
+    compile group: 'com.sun.jersey', name: 'jersey-bundle', version: '1.19.1'
+    //JSON Java Library
+    compile 'com.google.code.gson:gson:2.8.2'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.mockito:mockito-inline:2.13.0'
+    testCompile 'org.springframework.restdocs:spring-restdocs-mockmvc:2.0.3.RELEASE'
+    asciidoctor 'org.springframework.restdocs:spring-restdocs-asciidoctor:2.0.3.RELEASE'
+
+    // https://mvnrepository.com/artifact/org.mockito/mockito-core
+    testCompile group: 'org.mockito', name: 'mockito-core', version: '2.22.0'
+
+    // comment this line to launch application from developing environment
+    // uncomment this line before generating .war file
+    // providedRuntime 'org.springframework.boot:spring-boot-starter-tomcat'
+}
+
+asciidoctor {
+    sourceDir = file('docs/asciidoc')
+    inputs.dir snippetsDir
+    outputDir = file('docs/asciidoc')
+    separateOutputDirs = false
+    dependsOn test
+}
