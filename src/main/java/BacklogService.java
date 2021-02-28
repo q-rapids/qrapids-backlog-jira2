@@ -1,15 +1,8 @@
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.net.URLEncoder;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.sun.jersey.api.client.Client;
-import com.sun.jersey.api.client.ClientHandlerException;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
 import com.sun.jersey.core.util.Base64;
@@ -39,15 +32,19 @@ public class BacklogService {
             Client client = Client.create();
 
             //String data = "{\"fields\":{\"project\":{\"key\":\"TP\"},\"summary\":\"REST Test\",\"description\": \"Creating of an issue using project keys and issue type names using the REST API\",\"issuetype\":{\"name\":\"Bug\"}}}";
+
+            //Creating all the data with the requirement
             String data = "{\"fields\":{\"project\":{\"key\":" +requirement.getIssue_summary()
                     +"},\"summary\":"+ requirement.getIssue_summary()
                     +",\"description\": " + requirement.getIssue_description() + ",\"issuetype\":{\"name\":"
                     + requirement.getIssue_type() + "}}}";
 
+            //POST METHOD JIRA
             WebResource webResource = client.resource("https://ariadnavinets.atlassian.net/rest/api/2/issue");
             response = webResource.header(headerAuthorization, headerAuthorizationValue).type(headerType).accept(headerType).post(ClientResponse.class, data);
             int statusCode = response.getStatus();
             System.out.println(statusCode);
+
 
             if (statusCode != 201) {
                 throw new RuntimeException("Failed : HTTP error code : "
