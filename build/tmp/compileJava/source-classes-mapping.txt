@@ -4,6 +4,8 @@ com/qrapids/backlog_jira/data/QualityRequirement.java
  com.qrapids.backlog_jira.data.QualityRequirement
 com/qrapids/backlog_jira/data/SuccessResponse.java
  com.qrapids.backlog_jira.data.SuccessResponse
+com/qrapids/backlog_jira/data/Milestone.java
+ com.qrapids.backlog_jira.data.Milestone
 com/qrapids/backlog_jira/data/ErrorResponse.java
  com.qrapids.backlog_jira.data.ErrorResponse
 com/qrapids/backlog_jira/JiraApp.java
