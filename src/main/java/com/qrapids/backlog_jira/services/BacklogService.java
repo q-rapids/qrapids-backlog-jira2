@@ -7,7 +7,9 @@ import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -16,10 +18,7 @@ import java.util.List;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.qrapids.backlog_jira.data.ErrorResponse;
-import com.qrapids.backlog_jira.data.Milestone;
-import com.qrapids.backlog_jira.data.QualityRequirement;
-import com.qrapids.backlog_jira.data.SuccessResponse;
+import com.qrapids.backlog_jira.data.*;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
@@ -32,7 +31,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 public class BacklogService {
     @GetMapping("/api/milestones")
-    public ResponseEntity<Object> gletkkMilestones(@RequestParam String project_id,
+    public ResponseEntity<Object> getMilestones(@RequestParam String project_id,
                                                 @RequestParam(value = "date_from", required = false) String date_from) {
         try {
 
@@ -70,31 +69,41 @@ public class BacklogService {
                 con.close();
 
                 JsonParser parser = new JsonParser();
-                JsonArray data = parser.parse(content.toString()).getAsJsonArray();
-                JsonObject obj = (JsonObject) data.getAsJsonObject().get("issues");
-                System.out.println(obj.toString());
+                System.out.println(parser.parse(content.toString()));
+                JsonObject obj = parser.parse(content.toString()).getAsJsonObject();
+                System.out.println(parser.parse("HOLA"));
+               // JsonObject obj = (JsonObject) data.getAsJsonObject().get("issues");
+                JsonArray data = obj.getAsJsonArray("issues");
+                System.out.println(parser.parse(data.toString()));
+                int size = obj.getAsJsonObject().get("total").getAsInt();
+                System.out.println(data.toString());
+                System.out.println((size));
+                System.out.println((data.size()));
                 List<Milestone> milestones = new ArrayList<>();
-                for (int i = 0; i < data.size(); ++i) {
+                for (int i = 0; i < size; ++i) {
                     JsonObject object = data.get(i).getAsJsonObject();
-                    if (!object.get("due_date").isJsonNull()) { // check if milestone have due_date
-                        String date = object.get("due_date").getAsString();
+                    System.out.println("PRIMER ELEMENTO: " + object.toString());
+                    JsonObject aux = object.getAsJsonObject().get("fields").getAsJsonObject();
+                    if (!aux.get("duedate").isJsonNull()) { // check if milestone have due_date
+                        String date = aux.get("duedate").getAsString();
                         if(date_from != null && !date_from.isEmpty()) {
                             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
                             Date from = sdf.parse(date_from);
                             Date due = sdf.parse(date);
                             if (due.equals(from) || due.after(from)) { // only add milestones which will finish after date_from
                                 Milestone newMilestone = new Milestone();
-                                newMilestone.setName(object.get("title").getAsString());
+                                newMilestone.setName(aux.get("title").getAsString());
                                 newMilestone.setDate(date);
-                                newMilestone.setDescription(object.get("description").getAsString());
+                                newMilestone.setDescription(aux.get("description").getAsString());
                                 newMilestone.setType("Milestone");
                                 milestones.add(newMilestone);
                             }
                         } else { // if there is no date_from specified --> we add all milestones with due_date
                             Milestone newMilestone = new Milestone();
-                            newMilestone.setName(object.get("title").getAsString());
+
+                            newMilestone.setName(aux.get("title").getAsString());
                             newMilestone.setDate(date);
-                            newMilestone.setDescription(object.get("description").getAsString());
+                            newMilestone.setDescription(aux.get("description").getAsString());
                             newMilestone.setType("Milestone");
                             milestones.add(newMilestone);
                         }
@@ -107,6 +116,25 @@ public class BacklogService {
             return new ResponseEntity<>(new ErrorResponse(e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
+    @GetMapping("/api/phases")
+    public ResponseEntity<Object> getPhases(@RequestParam String project_id,
+                                            @RequestParam(value = "date_from", required = false) String date_from) throws ParseException {
+        LocalDate date = LocalDate.now();
+        List<Phase> phases = new ArrayList<>();
+        // add others phases to the list
+        for (int j = 0; j < 5; ++j) {
+            Phase newPhase = new Phase();
+            newPhase.setDateFrom(date.minusWeeks(2).toString());
+            newPhase.setDateTo(date.toString());
+            newPhase.setName("");
+            newPhase.setDescription("");
+            phases.add(newPhase);
+            date = date.minusWeeks(2);
+        }
+        return new ResponseEntity<>(phases, HttpStatus.OK);
+    }
+
     @PostMapping("/api/createIssue")
     public ResponseEntity<Object> createIssue(@RequestBody QualityRequirement requirement) throws IOException {
         try {
