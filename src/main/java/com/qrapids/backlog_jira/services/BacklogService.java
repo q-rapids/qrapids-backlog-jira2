@@ -36,12 +36,12 @@ public class BacklogService {
         try {
 
             //Creating the request authentication by username and apiKey
+
             ClientResponse con;
             String auth = new String(Base64.encode("ariadna.vinets@estudiantat.upc.edu" + ":" + "BaDD9uM0B6VtdOWuwRkQ3C2B"));
             final String headerAuthorization = "Authorization";
             final String headerAuthorizationValue = "Basic " + auth;
             final String headerType = "application/json";
-
             Client client = Client.create();
 
             WebResource webResource = client.resource("https://ariadnavinets.atlassian.net/rest/api/2/search?jql=project%3D" + project_id + "%20AND%20issuetype%3Dmilestone");
@@ -49,9 +49,6 @@ public class BacklogService {
             int status = con.getStatus();
             System.out.println(status);
             // Creating a Request with authentication by token
-
-
-
             // Reading the Response
             if (status != 200) {
                 throw new RuntimeException("Failed : HTTP error code : "
@@ -69,21 +66,17 @@ public class BacklogService {
                 con.close();
 
                 JsonParser parser = new JsonParser();
-                System.out.println(parser.parse(content.toString()));
                 JsonObject obj = parser.parse(content.toString()).getAsJsonObject();
-                System.out.println(parser.parse("HOLA"));
-               // JsonObject obj = (JsonObject) data.getAsJsonObject().get("issues");
+
                 JsonArray data = obj.getAsJsonArray("issues");
-                System.out.println(parser.parse(data.toString()));
+
                 int size = obj.getAsJsonObject().get("total").getAsInt();
-                System.out.println(data.toString());
-                System.out.println((size));
-                System.out.println((data.size()));
+
                 List<Milestone> milestones = new ArrayList<>();
+
                 for (int i = 0; i < size; ++i) {
-                    JsonObject object = data.get(i).getAsJsonObject();
-                    System.out.println("PRIMER ELEMENTO: " + object.toString());
-                    JsonObject aux = object.getAsJsonObject().get("fields").getAsJsonObject();
+                    JsonObject object = data.get(i).getAsJsonObject(); //primer elemento de milestones
+                    JsonObject aux = object.getAsJsonObject().get("fields").getAsJsonObject(); //obtencion campos del objeto
                     if (!aux.get("duedate").isJsonNull()) { // check if milestone have due_date
                         String date = aux.get("duedate").getAsString();
                         if(date_from != null && !date_from.isEmpty()) {
@@ -92,7 +85,7 @@ public class BacklogService {
                             Date due = sdf.parse(date);
                             if (due.equals(from) || due.after(from)) { // only add milestones which will finish after date_from
                                 Milestone newMilestone = new Milestone();
-                                newMilestone.setName(aux.get("title").getAsString());
+                                newMilestone.setName(aux.get("summary").getAsString());
                                 newMilestone.setDate(date);
                                 newMilestone.setDescription(aux.get("description").getAsString());
                                 newMilestone.setType("Milestone");
@@ -100,11 +93,11 @@ public class BacklogService {
                             }
                         } else { // if there is no date_from specified --> we add all milestones with due_date
                             Milestone newMilestone = new Milestone();
-
-                            newMilestone.setName(aux.get("title").getAsString());
+                            newMilestone.setName(aux.get("summary").getAsString());
                             newMilestone.setDate(date);
                             newMilestone.setDescription(aux.get("description").getAsString());
                             newMilestone.setType("Milestone");
+                            System.out.println(newMilestone.toString());
                             milestones.add(newMilestone);
                         }
                     }
