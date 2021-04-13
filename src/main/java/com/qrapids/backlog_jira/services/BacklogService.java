@@ -194,7 +194,6 @@ public class BacklogService {
                     + "},\"summary\":\"" + requirement.getIssue_summary() + "\""
                     + ",\"description\":\" " + requirement.getIssue_description() + "\"" + ",\"issuetype\":{\"name\":\""
                     + requirement.getIssue_type() + "\"" + "}}}";
-
             //POST METHOD JIRA
             WebResource webResource = client.resource("https://ariadnavinets.atlassian.net/rest/api/2/issue");
             response = webResource.header(headerAuthorization, headerAuthorizationValue).type(headerType).accept(headerType).post(ClientResponse.class, data);

@@ -6,6 +6,8 @@ public class QualityRequirement {
     private String issue_type;
     private String project_id;
     private String decision_rationale;
+    private String due_date;
+    private Priority priority;
 
     public String getIssue_summary() {
         return issue_summary;
@@ -31,9 +33,13 @@ public class QualityRequirement {
     public void setProject_id(String project_id) {
         this.project_id = project_id;
     }
+    public String getDue_date(){return due_date; };
+    public void setDue_date(String due_date) { this.due_date = due_date; }
     public String getDecision_rationale() {
         return decision_rationale;
     }
+    public Priority getPriority() {return priority;};
+    public void setPriority(Priority priority) { this.priority = priority; }
     public void setDecision_rationale(String decision_rationale) {
         this.decision_rationale = decision_rationale;
     }
