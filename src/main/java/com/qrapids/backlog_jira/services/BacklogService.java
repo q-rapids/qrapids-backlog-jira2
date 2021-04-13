@@ -23,6 +23,7 @@ import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
 import com.sun.jersey.core.util.Base64;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -30,21 +31,26 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 public class BacklogService {
+
+    @Value("${jira.url}")
+    private String jiraURL;
+
+    @Value("${jira.secret}")
+    private String token;
+
     @GetMapping("/api/milestones")
     public ResponseEntity<Object> getMilestones(@RequestParam String project_id,
                                                 @RequestParam(value = "date_from", required = false) String date_from) {
         try {
-
             //Creating the request authentication by username and apiKey
-
             ClientResponse con;
-            String auth = new String(Base64.encode("ariadna.vinets@estudiantat.upc.edu" + ":" + "BaDD9uM0B6VtdOWuwRkQ3C2B"));
+            String auth = new String(Base64.encode(jiraURL + ":" + token ));
             final String headerAuthorization = "Authorization";
             final String headerAuthorizationValue = "Basic " + auth;
             final String headerType = "application/json";
             Client client = Client.create();
 
-            WebResource webResource = client.resource("https://ariadnavinets.atlassian.net/rest/api/2/search?jql=project%3D" + project_id + "%20AND%20issuetype%3Dmilestone");
+            WebResource webResource = client.resource("https://ariadnavinets.atlassian.net/rest/api/2/search?jql=project%3D" + project_id + "%20AND%20issuetype%3DMilestone");
             con = webResource.header(headerAuthorization , headerAuthorizationValue).type(headerType).accept(headerType).get(ClientResponse.class);
             int status = con.getStatus();
             System.out.println(status);
@@ -77,9 +83,13 @@ public class BacklogService {
                 for (int i = 0; i < size; ++i) {
                     JsonObject object = data.get(i).getAsJsonObject(); //primer elemento de milestones
                     JsonObject aux = object.getAsJsonObject().get("fields").getAsJsonObject(); //obtencion campos del objeto
+                    System.out.println(aux.toString());
+                    System.out.println(aux.get("duedate").toString());
                     if (!aux.get("duedate").isJsonNull()) { // check if milestone have due_date
+                        System.out.println("DUE DATE NOT NULL");
                         String date = aux.get("duedate").getAsString();
                         if(date_from != null && !date_from.isEmpty()) {
+                            System.out.println("not null");
                             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
                             Date from = sdf.parse(date_from);
                             Date due = sdf.parse(date);
@@ -89,14 +99,19 @@ public class BacklogService {
                                 newMilestone.setDate(date);
                                 newMilestone.setDescription(aux.get("description").getAsString());
                                 newMilestone.setType("Milestone");
+                                System.out.println(newMilestone.toString());
                                 milestones.add(newMilestone);
                             }
                         } else { // if there is no date_from specified --> we add all milestones with due_date
+                            System.out.println("PRUEBA date_from no especified");
                             Milestone newMilestone = new Milestone();
+                            System.out.println(aux.get("summary").getAsString());
                             newMilestone.setName(aux.get("summary").getAsString());
                             newMilestone.setDate(date);
+                            System.out.println(aux.get("description").getAsString());
                             newMilestone.setDescription(aux.get("description").getAsString());
                             newMilestone.setType("Milestone");
+                            System.out.println("PRUEBA");
                             System.out.println(newMilestone.toString());
                             milestones.add(newMilestone);
                         }
@@ -113,19 +128,50 @@ public class BacklogService {
     @GetMapping("/api/phases")
     public ResponseEntity<Object> getPhases(@RequestParam String project_id,
                                             @RequestParam(value = "date_from", required = false) String date_from) throws ParseException {
-        LocalDate date = LocalDate.now();
-        List<Phase> phases = new ArrayList<>();
-        // add others phases to the list
-        for (int j = 0; j < 5; ++j) {
-            Phase newPhase = new Phase();
-            newPhase.setDateFrom(date.minusWeeks(2).toString());
-            newPhase.setDateTo(date.toString());
-            newPhase.setName("");
-            newPhase.setDescription("");
-            phases.add(newPhase);
-            date = date.minusWeeks(2);
+        ResponseEntity<Object> milestonesList = getMilestones(project_id,date_from);
+        if (milestonesList.getStatusCode() == HttpStatus.OK) {
+            List<Milestone> milestones = (List<Milestone>) milestonesList.getBody();
+            List<Phase> phases = new ArrayList<>();
+            if (milestones.isEmpty())
+                return new ResponseEntity<>(phases, HttpStatus.OK);
+            else {
+                // get next milestone from today
+                Date now = new Date();
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+                int i = 0;
+                boolean found = false;
+                while (i < milestones.size() && !found) {
+                    Date due = sdf.parse(milestones.get(i).getDate());
+                    if (due.after(now))
+                        found = true;
+                    else
+                        i++;
+                }
+                if (found) {
+                    // put milestone phase to the list
+                    Phase firstPhase = new Phase();
+                    LocalDate date = LocalDate.parse(milestones.get(i).getDate()); // milestone date
+                    firstPhase.setDateFrom(date.minusWeeks(1).toString());
+                    firstPhase.setDateTo(date.toString());
+                    firstPhase.setName("");
+                    firstPhase.setDescription("");
+                    phases.add(firstPhase);
+                    // add others phases to the list
+                    for (int j = 1; j < 10; ++j) {
+                        Phase newPhase = new Phase();
+                        newPhase.setDateFrom(date.minusWeeks(j + 1).toString());
+                        newPhase.setDateTo(date.minusWeeks(j).toString());
+                        newPhase.setName("");
+                        newPhase.setDescription("");
+                        phases.add(newPhase);
+                    }
+                }
+                return new ResponseEntity<>(phases, HttpStatus.OK);
+            }
+        } else {
+            ErrorResponse error = (ErrorResponse) milestonesList.getBody();
+            return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
         }
-        return new ResponseEntity<>(phases, HttpStatus.OK);
     }
 
     @PostMapping("/api/createIssue")
@@ -134,7 +180,7 @@ public class BacklogService {
             SuccessResponse newIssue = null;
             //Creating the request authentication by username and apiKey
             ClientResponse response;
-            String auth = new String(Base64.encode("ariadna.vinets@estudiantat.upc.edu" + ":" + "BaDD9uM0B6VtdOWuwRkQ3C2B"));
+            String auth = new String(Base64.encode(jiraURL + ":" + token ));
             final String headerAuthorization = "Authorization";
             final String headerAuthorizationValue = "Basic " + auth;
             final String headerType = "application/json";
