@@ -23,6 +23,7 @@ import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
 import com.sun.jersey.core.util.Base64;
+import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -103,16 +104,11 @@ public class BacklogService {
                                 milestones.add(newMilestone);
                             }
                         } else { // if there is no date_from specified --> we add all milestones with due_date
-                            System.out.println("PRUEBA date_from no especified");
                             Milestone newMilestone = new Milestone();
-                            System.out.println(aux.get("summary").getAsString());
                             newMilestone.setName(aux.get("summary").getAsString());
                             newMilestone.setDate(date);
-                            System.out.println(aux.get("description").getAsString());
                             newMilestone.setDescription(aux.get("description").getAsString());
                             newMilestone.setType("Milestone");
-                            System.out.println("PRUEBA");
-                            System.out.println(newMilestone.toString());
                             milestones.add(newMilestone);
                         }
                     }
@@ -186,17 +182,27 @@ public class BacklogService {
             final String headerType = "application/json";
 
             Client client = Client.create();
+            //fields of project
+            JSONObject projectvar = new JSONObject();
+            projectvar.put("key", requirement.getProject_id());
+            JSONObject fieldsvar = new JSONObject();
+            fieldsvar.put("project", projectvar);
+            fieldsvar.put("summary", requirement.getIssue_summary());
+            fieldsvar.put("description", requirement.getIssue_description());
+            fieldsvar.put("duedate", requirement.getDue_date());
+            JSONObject objPriority = new JSONObject();
+            objPriority.put("name", requirement.getPriority());
+            fieldsvar.put("priority", objPriority);
+            JSONObject issuetype = new JSONObject();
+            issuetype.put("name", requirement.getIssue_type());
+            fieldsvar.put("issuetype", issuetype);
+            //final JSON
+            JSONObject fields = new JSONObject();
+            fields.put("fields", fieldsvar);
 
-            String data1 = "{\"fields\":{\"project\":{\"key\":\"TP\"},\"summary\":\"REST Test\",\"description\": \"Creating of an issue using project keys and issue type names using the REST API\",\"issuetype\":{\"name\":\"Bug\"}}}";
-
-            //Creating all the data with the requirement
-            String data = "{\"fields\":{\"project\":{\"key\":\"" + requirement.getProject_id() + "\""
-                    + "},\"summary\":\"" + requirement.getIssue_summary() + "\""
-                    + ",\"description\":\" " + requirement.getIssue_description() + "\"" + ",\"issuetype\":{\"name\":\""
-                    + requirement.getIssue_type() + "\"" + "}}}";
             //POST METHOD JIRA
             WebResource webResource = client.resource("https://ariadnavinets.atlassian.net/rest/api/2/issue");
-            response = webResource.header(headerAuthorization, headerAuthorizationValue).type(headerType).accept(headerType).post(ClientResponse.class, data);
+            response = webResource.header(headerAuthorization, headerAuthorizationValue).type(headerType).accept(headerType).post(ClientResponse.class, fields.toString());
             int statusCode = response.getStatus();
             System.out.println(statusCode);
 

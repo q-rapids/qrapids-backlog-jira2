@@ -35,6 +35,7 @@ dependencies {
     compile group: 'com.sun.jersey', name: 'jersey-bundle', version: '1.19.1'
     //JSON Java Library
     compile 'com.google.code.gson:gson:2.8.2'
+    implementation group: 'org.json', name: 'json', version: '20210307'
     // https://mvnrepository.com/artifact/org.apache.commons/commons-lang3
     implementation group: 'org.apache.commons', name: 'commons-lang3', version: '3.0'
 
@@ -51,6 +52,8 @@ dependencies {
     // uncomment this line before generating .war file
     // providedRuntime 'org.springframework.boot:spring-boot-starter-tomcat'
 }
+
+
 
 asciidoctor {
     sourceDir = file('docs/asciidoc')
