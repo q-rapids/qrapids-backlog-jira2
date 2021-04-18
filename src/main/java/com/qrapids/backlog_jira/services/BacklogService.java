@@ -190,11 +190,12 @@ public class BacklogService {
             fieldsvar.put("summary", requirement.getIssue_summary());
             fieldsvar.put("description", requirement.getIssue_description());
             fieldsvar.put("duedate", requirement.getDue_date());
-            JSONObject objPriority = new JSONObject();
-            if(requirement.getPriority() != null)
+
+            if(requirement.getPriority() != null) {
+                JSONObject objPriority = new JSONObject();
                 objPriority.put("name", requirement.getPriority());
-            else objPriority.put("name", "Medium");
                 fieldsvar.put("priority", objPriority);
+            }
             JSONObject issuetype = new JSONObject();
             issuetype.put("name", requirement.getIssue_type());
             fieldsvar.put("issuetype", issuetype);
