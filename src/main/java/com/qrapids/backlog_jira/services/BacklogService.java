@@ -104,6 +104,7 @@ public class BacklogService {
                                 milestones.add(newMilestone);
                             }
                         } else { // if there is no date_from specified --> we add all milestones with due_date
+                            if(aux.get("description").getAsString().equals("null")) throw new Exception ("Description is null");
                             Milestone newMilestone = new Milestone();
                             newMilestone.setName(aux.get("summary").getAsString());
                             newMilestone.setDate(date);
@@ -196,6 +197,7 @@ public class BacklogService {
                 objPriority.put("name", requirement.getPriority());
                 fieldsvar.put("priority", objPriority);
             }
+
             JSONObject issuetype = new JSONObject();
             issuetype.put("name", requirement.getIssue_type());
             fieldsvar.put("issuetype", issuetype);
