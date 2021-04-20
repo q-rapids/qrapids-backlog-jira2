@@ -10,10 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -191,7 +188,10 @@ public class BacklogService {
             fieldsvar.put("summary", requirement.getIssue_summary());
             fieldsvar.put("description", requirement.getIssue_description());
             fieldsvar.put("duedate", requirement.getDue_date());
-
+                //Assignee hardcoded
+            JSONObject assignee = new JSONObject();
+            assignee.put("accountId", "607ee482a41c7a007847b2a4");
+            fieldsvar.put("assignee", assignee);
             if(requirement.getPriority() != null) {
                 JSONObject objPriority = new JSONObject();
                 objPriority.put("name", requirement.getPriority());
@@ -239,6 +239,65 @@ public class BacklogService {
             return new ResponseEntity<>(new ErrorResponse(e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+    @GetMapping("/api/assignees")
+    public ResponseEntity<Object> getAssignees(@RequestParam String project_id) throws ParseException {
+        try {
+            //Creating the request authentication by username and apiKey
+            ClientResponse con;
+            String auth = new String(Base64.encode(jiraURL + ":" + token));
+            final String headerAuthorization = "Authorization";
+            final String headerAuthorizationValue = "Basic " + auth;
+            final String headerType = "application/json";
+            Client client = Client.create();
+
+            WebResource webResource = client.resource("https://ariadnavinets.atlassian.net/rest/api/2/user/assignable/search?project=" + project_id);
+            con = webResource.header(headerAuthorization, headerAuthorizationValue).type(headerType).accept(headerType).get(ClientResponse.class);
+            int status = con.getStatus();
+            System.out.println(status);
+            if (status != 200) {
+                throw new RuntimeException("Failed : HTTP error code : "
+                        + status);
+            } else {
+                BufferedReader in = new BufferedReader(
+                        new InputStreamReader(con.getEntityInputStream(), "utf-8"));
+                String inputLine;
+                StringBuffer content = new StringBuffer();
+                while ((inputLine = in.readLine()) != null) {
+                    content.append(inputLine);
+                }
+                System.out.println(content.toString());
+                in.close();
+                con.close();
+
+                JsonParser parser = new JsonParser();
+
+
+                JsonArray obj = parser.parse(content.toString()).getAsJsonArray();
+
+                List<Assignee> assignees = new ArrayList<>();
+                System.out.println(obj.size());
+
+                for (int i = 0; i < obj.size(); ++i) {
+                    JsonObject object = obj.get(i).getAsJsonObject(); //primer elemento de milestones
+                    Assignee newAssignee = new Assignee();
+                    newAssignee.setId(object.get("accountId").getAsString());
+                    newAssignee.setName(object.get("displayName").getAsString());
+                    assignees.add(newAssignee);
+                }
+                return new ResponseEntity<>(assignees, HttpStatus.OK);
+            }
+        }
+        catch (Exception e) {
+            return new ResponseEntity<>(new ErrorResponse(e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+   /* private List<JSONObject> getAllSprints() {
+        List<JSONObject> sprints = null;
+
+        return sprints;
+    }*/
+
 }
 
 
