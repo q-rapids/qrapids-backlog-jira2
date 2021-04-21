@@ -124,6 +124,7 @@ public class BacklogService {
                                             @RequestParam(value = "date_from", required = false) String date_from) throws ParseException {
         ResponseEntity<Object> milestonesList = getMilestones(project_id,date_from);
         if (milestonesList.getStatusCode() == HttpStatus.OK) {
+
             List<Milestone> milestones = (List<Milestone>) milestonesList.getBody();
             List<Phase> phases = new ArrayList<>();
             if (milestones.isEmpty())
@@ -190,13 +191,21 @@ public class BacklogService {
             fieldsvar.put("duedate", requirement.getDue_date());
                 //Assignee hardcoded
             JSONObject assignee = new JSONObject();
-            assignee.put("accountId", "607ee482a41c7a007847b2a4");
+            assignee.put("accountId", requirement.getAssignee().getId());
             fieldsvar.put("assignee", assignee);
             if(requirement.getPriority() != null) {
                 JSONObject objPriority = new JSONObject();
                 objPriority.put("name", requirement.getPriority());
                 fieldsvar.put("priority", objPriority);
             }
+            //put sprint on issue
+            JSONObject sprint = new JSONObject();
+            System.out.println(requirement.getSprint().getId());
+            sprint.put("name", requirement.getSprint().getName());
+            sprint.put("id", requirement.getSprint().getId());
+            sprint.put("boardId", getBoardId(requirement.getProject_id()));
+
+            fieldsvar.put("customfield_10020",Integer.valueOf(requirement.getSprint().getId()));
 
             JSONObject issuetype = new JSONObject();
             issuetype.put("name", requirement.getIssue_type());
@@ -271,7 +280,6 @@ public class BacklogService {
 
                 JsonParser parser = new JsonParser();
 
-
                 JsonArray obj = parser.parse(content.toString()).getAsJsonArray();
 
                 List<Assignee> assignees = new ArrayList<>();
@@ -292,13 +300,104 @@ public class BacklogService {
         }
     }
 
-   /* private List<JSONObject> getAllSprints() {
-        List<JSONObject> sprints = null;
+    @GetMapping("/api/sprints")
+    public ResponseEntity<Object> getSprints(@RequestParam String project_id) throws ParseException {
+        try {
+            //Creating the request authentication by username and apiKey
+            ClientResponse con;
+            String auth = new String(Base64.encode(jiraURL + ":" + token));
+            final String headerAuthorization = "Authorization";
+            final String headerAuthorizationValue = "Basic " + auth;
+            final String headerType = "application/json";
+            Client client = Client.create();
 
-        return sprints;
-    }*/
+            int id = getBoardId(project_id);
 
+            WebResource webResource = client.resource("https://ariadnavinets.atlassian.net/rest/agile/1.0/board/" + id + "/sprint");
+            con = webResource.header(headerAuthorization, headerAuthorizationValue).type(headerType).accept(headerType).get(ClientResponse.class);
+            int status = con.getStatus();
+            System.out.println(status);
+            System.out.println(id);
+            if (status != 200) {
+                throw new RuntimeException("Failed : HTTP error code : "
+                        + status);
+            } else {
+                BufferedReader in = new BufferedReader(
+                        new InputStreamReader(con.getEntityInputStream(), "utf-8"));
+                String inputLine;
+                StringBuffer content = new StringBuffer();
+                while ((inputLine = in.readLine()) != null) {
+                    content.append(inputLine);
+                }
+                System.out.println(content.toString());
+                in.close();
+                con.close();
+
+                JsonParser parser = new JsonParser();
+                JsonObject data = parser.parse(content.toString()).getAsJsonObject();
+
+                JsonArray obj = data.getAsJsonArray("values");
+
+                System.out.println(obj.toString());
+                List<Sprint> sprints = new ArrayList<>();
+                System.out.println(obj.size());
+
+                for (int i = 0; i < obj.size(); ++i) {
+                    JsonObject object = obj.get(i).getAsJsonObject(); //primer elemento de milestones
+                    Sprint newSprint = new Sprint();
+                    newSprint.setId(object.get("id").getAsString());
+                    newSprint.setName(object.get("name").getAsString());
+                    sprints.add(newSprint);
+                }
+                return new ResponseEntity<>(sprints, HttpStatus.OK);
+            }
+        }
+        catch (Exception e) {
+            return new ResponseEntity<>(new ErrorResponse(e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    private int getBoardId(String project_id) throws IOException {
+        int id;
+        ClientResponse con;
+        String auth = new String(Base64.encode(jiraURL + ":" + token));
+        final String headerAuthorization = "Authorization";
+        final String headerAuthorizationValue = "Basic " + auth;
+        final String headerType = "application/json";
+        Client client = Client.create();
+
+        WebResource webResource = client.resource("https://ariadnavinets.atlassian.net/rest/agile/1.0/board?projectKeyOrId=" + project_id);
+        con = webResource.header(headerAuthorization, headerAuthorizationValue).type(headerType).accept(headerType).get(ClientResponse.class);
+        int status = con.getStatus();
+        System.out.println(status);
+
+
+        if (status != 200) {
+            throw new RuntimeException("Failed : HTTP error code : "
+                    + status);
+        } else {
+            BufferedReader in = new BufferedReader(
+                    new InputStreamReader(con.getEntityInputStream(), "utf-8"));
+            String inputLine;
+            StringBuffer content = new StringBuffer();
+            while ((inputLine = in.readLine()) != null) {
+                content.append(inputLine);
+            }
+            System.out.println(content.toString());
+            in.close();
+            con.close();
+
+            JsonParser parser = new JsonParser();
+            JsonObject obj = parser.parse(content.toString()).getAsJsonObject();
+            JsonArray data = obj.getAsJsonArray("values");
+
+                JsonObject object = data.get(0).getAsJsonObject();
+                id = object.get("id").getAsInt();
+            }
+            return id;
+        }
 }
+
 
 
 

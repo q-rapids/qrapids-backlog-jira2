@@ -8,6 +8,8 @@ public class QualityRequirement {
     private String decision_rationale;
     private String due_date;
     private String priority;
+    private Assignee assignee;
+    private Sprint sprint;
 
     public String getIssue_summary() {
         return issue_summary;
@@ -42,5 +44,21 @@ public class QualityRequirement {
     public void setPriority(String priority) { this.priority = priority; }
     public void setDecision_rationale(String decision_rationale) {
         this.decision_rationale = decision_rationale;
+    }
+
+    public Assignee getAssignee() {
+        return assignee;
+    }
+
+    public void setAssignee(Assignee assignee) {
+        this.assignee = assignee;
+    }
+
+    public Sprint getSprint() {
+        return sprint;
+    }
+
+    public void setSprint(Sprint sprint) {
+        this.sprint = sprint;
     }
 }
