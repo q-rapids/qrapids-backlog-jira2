@@ -1,5 +1,4 @@
 package com.qrapids.backlog_jira.data;
-
 public class QualityRequirement {
     private String issue_summary;
     private String issue_description;
@@ -10,6 +9,8 @@ public class QualityRequirement {
     private String priority;
     private Assignee assignee;
     private Sprint sprint;
+    private String issue_id;
+    private String acceptance_criteria;
 
     public String getIssue_summary() {
         return issue_summary;
@@ -61,4 +62,21 @@ public class QualityRequirement {
     public void setSprint(Sprint sprint) {
         this.sprint = sprint;
     }
+
+    public String getIssue_id() {
+        return issue_id;
+    }
+
+    public void setIssue_id(String issue_id) {
+        this.issue_id = issue_id;
+    }
+
+    public String getAcceptance_criteria() {
+        return acceptance_criteria;
+    }
+
+    public void setAcceptance_criteria(String acceptance_criteria) {
+        this.acceptance_criteria = acceptance_criteria;
+    }
 }
+

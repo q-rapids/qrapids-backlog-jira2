@@ -25,6 +25,11 @@ version '1.0-SNAPSHOT'
 repositories {
     mavenCentral()
 }
+war {
+    baseName = 'qrapids-jira'
+    version =  version
+    enabled = true
+}
 
 dependencies {
     compile('org.springframework.boot:spring-boot-starter-actuator')

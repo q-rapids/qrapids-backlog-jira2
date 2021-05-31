@@ -1,18 +1,20 @@
-com/qrapids/backlog_jira/data/Phase.java
- com.qrapids.backlog_jira.data.Phase
+com/qrapids/backlog_jira/data/Sprint.java
+ com.qrapids.backlog_jira.data.Sprint
 com/qrapids/backlog_jira/data/Assignee.java
  com.qrapids.backlog_jira.data.Assignee
+com/qrapids/backlog_jira/data/Phase.java
+ com.qrapids.backlog_jira.data.Phase
+com/qrapids/backlog_jira/data/QualityRequirement.java
+ com.qrapids.backlog_jira.data.QualityRequirement
 com/qrapids/backlog_jira/data/SuccessResponse.java
  com.qrapids.backlog_jira.data.SuccessResponse
 com/qrapids/backlog_jira/data/Milestone.java
  com.qrapids.backlog_jira.data.Milestone
+com/qrapids/backlog_jira/data/Issue.java
+ com.qrapids.backlog_jira.data.Issue
 com/qrapids/backlog_jira/data/ErrorResponse.java
  com.qrapids.backlog_jira.data.ErrorResponse
 com/qrapids/backlog_jira/JiraApp.java
  com.qrapids.backlog_jira.JiraApp
-com/qrapids/backlog_jira/data/Sprint.java
- com.qrapids.backlog_jira.data.Sprint
-com/qrapids/backlog_jira/data/QualityRequirement.java
- com.qrapids.backlog_jira.data.QualityRequirement
 com/qrapids/backlog_jira/services/BacklogService.java
  com.qrapids.backlog_jira.services.BacklogService

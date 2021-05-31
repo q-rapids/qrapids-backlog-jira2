@@ -27,6 +27,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 
+
 @RestController
 public class BacklogService {
 
@@ -40,6 +41,7 @@ public class BacklogService {
     public ResponseEntity<Object> getMilestones(@RequestParam String project_id,
                                                 @RequestParam(value = "date_from", required = false) String date_from) {
         try {
+
             //Creating the request authentication by username and apiKey
             ClientResponse con;
             String auth = new String(Base64.encode(jiraURL + ":" + token ));
@@ -48,9 +50,12 @@ public class BacklogService {
             final String headerType = "application/json";
             Client client = Client.create();
 
+            //GET CALL
             WebResource webResource = client.resource("https://ariadnavinets.atlassian.net/rest/api/2/search?jql=project%3D" + project_id + "%20AND%20issuetype%3DMilestone");
             con = webResource.header(headerAuthorization , headerAuthorizationValue).type(headerType).accept(headerType).get(ClientResponse.class);
             int status = con.getStatus();
+
+
             System.out.println(status);
             // Creating a Request with authentication by token
             // Reading the Response
@@ -79,15 +84,11 @@ public class BacklogService {
                 List<Milestone> milestones = new ArrayList<>();
 
                 for (int i = 0; i < size; ++i) {
-                    JsonObject object = data.get(i).getAsJsonObject(); //primer elemento de milestones
-                    JsonObject aux = object.getAsJsonObject().get("fields").getAsJsonObject(); //obtencion campos del objeto
-                    System.out.println(aux.toString());
-                    System.out.println(aux.get("duedate").toString());
+                    JsonObject object = data.get(i).getAsJsonObject(); //first element of milestones
+                    JsonObject aux = object.getAsJsonObject().get("fields").getAsJsonObject(); //getting all object fields
                     if (!aux.get("duedate").isJsonNull()) { // check if milestone have due_date
-                        System.out.println("DUE DATE NOT NULL");
                         String date = aux.get("duedate").getAsString();
                         if(date_from != null && !date_from.isEmpty()) {
-                            System.out.println("not null");
                             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
                             Date from = sdf.parse(date_from);
                             Date due = sdf.parse(date);
@@ -121,8 +122,12 @@ public class BacklogService {
 
     @GetMapping("/api/phases")
     public ResponseEntity<Object> getPhases(@RequestParam String project_id,
-                                            @RequestParam(value = "date_from", required = false) String date_from) throws ParseException {
+                                            @RequestParam(value = "date_from", required = false) String date_from,
+                                            @RequestParam(value = "num_weeks", required = false) String num_weeks,
+                                            @RequestParam(value = "duration_sprint", required = false) String duration_sprint) throws ParseException {
         ResponseEntity<Object> milestonesList = getMilestones(project_id,date_from);
+        int numWeeks = 10;
+        int duration = 1;
         if (milestonesList.getStatusCode() == HttpStatus.OK) {
 
             List<Milestone> milestones = (List<Milestone>) milestonesList.getBody();
@@ -143,18 +148,26 @@ public class BacklogService {
                         i++;
                 }
                 if (found) {
+
+                    if (duration_sprint != null){
+                        duration =  Integer.parseInt(duration_sprint);
+                    }
                     // put milestone phase to the list
                     Phase firstPhase = new Phase();
                     LocalDate date = LocalDate.parse(milestones.get(i).getDate()); // milestone date
-                    firstPhase.setDateFrom(date.minusWeeks(1).toString());
+                    firstPhase.setDateFrom(date.minusWeeks(duration).toString());
                     firstPhase.setDateTo(date.toString());
                     firstPhase.setName("");
                     firstPhase.setDescription("");
                     phases.add(firstPhase);
                     // add others phases to the list
-                    for (int j = 1; j < 10; ++j) {
+                    if (num_weeks != null){
+                        numWeeks =  Integer.parseInt(num_weeks);
+                    }
+
+                    for (int j = 1; j < numWeeks; ++j) {
                         Phase newPhase = new Phase();
-                        newPhase.setDateFrom(date.minusWeeks(j + 1).toString());
+                        newPhase.setDateFrom(date.minusWeeks(j + duration).toString());
                         newPhase.setDateTo(date.minusWeeks(j).toString());
                         newPhase.setName("");
                         newPhase.setDescription("");
@@ -168,6 +181,184 @@ public class BacklogService {
             return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
+
+    @GetMapping("/api/issues")
+    public ResponseEntity<Object> getIssues(@RequestParam String project_id) throws ParseException {
+        try {
+            //Creating the request authentication by username and apiKey
+            ClientResponse con;
+            String auth = new String(Base64.encode(jiraURL + ":" + token));
+            final String headerAuthorization = "Authorization";
+            final String headerAuthorizationValue = "Basic " + auth;
+            final String headerType = "application/json";
+            Client client = Client.create();
+
+            WebResource webResource = client.resource("https://ariadnavinets.atlassian.net/rest/api/2/search?project=" + project_id);
+            con = webResource.header(headerAuthorization, headerAuthorizationValue).type(headerType).accept(headerType).get(ClientResponse.class);
+            int status = con.getStatus();
+            System.out.println(status);
+            if (status != 200) {
+                throw new RuntimeException("Failed : HTTP error code : "
+                        + status);
+            } else {
+                BufferedReader in = new BufferedReader(
+                        new InputStreamReader(con.getEntityInputStream(), "utf-8"));
+                String inputLine;
+                StringBuffer content = new StringBuffer();
+                while ((inputLine = in.readLine()) != null) {
+                    content.append(inputLine);
+                }
+
+                in.close();
+                con.close();
+
+                List<QualityRequirement> qualityRequirements = new ArrayList<>();
+
+                JsonParser parser = new JsonParser();
+                JsonObject obj = parser.parse(content.toString()).getAsJsonObject();
+                JsonArray data = obj.getAsJsonArray("issues");
+                List<Issue> issues = new ArrayList<>();
+
+                for (int i = 0; i < data.size(); ++i) {
+                    JsonObject object = data.get(i).getAsJsonObject(); //primer elemento de milestones
+                    Issue newIssue = new Issue();
+                    newIssue.setIssue_id(object.get("id").getAsString());
+
+                    JsonObject aux = object.getAsJsonObject().get("fields").getAsJsonObject(); //obtencion campos del objeto
+                    newIssue.setIssue_summary(aux.get("summary").getAsString());
+
+                    newIssue.setIssue_description(aux.get("description").isJsonNull() ?  null : aux.get("description").getAsString());
+                    System.out.println(newIssue);
+                    int size = aux.get("customfield_10029").getAsJsonArray().size();
+                    List<String> acc_criteria = null;
+                   /* for(int i = 0; i < size; i++) {
+                        newIssue.setAcceptance_criteria(aux.get("customfield_10029").getAsJsonArray());
+                    }
+
+                    issues.add(newIssue);*/
+                }
+
+                return new ResponseEntity<>(issues, HttpStatus.OK);
+            }
+
+        } catch (Exception e) {
+            return new ResponseEntity<>(new ErrorResponse(e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+
+    @PutMapping("/api/acceptancecriteria")
+    public ResponseEntity<Object> putAcceptanceCriteria(@RequestBody Issue issue,
+                                                        @RequestParam String acc_criteria) throws ParseException {
+        try {
+            System.out.println("HOLA ENTRO");
+            //Create list of acceptante criterias
+            List<String> acc_criteriaList = issue.getAcceptance_criteria();
+            //Creating the request authentication by username and apiKey
+            ClientResponse con;
+            String auth = new String(Base64.encode(jiraURL + ":" + token));
+            final String headerAuthorization = "Authorization";
+            final String headerAuthorizationValue = "Basic " + auth;
+            final String headerType = "application/json";
+            Client client = Client.create();
+            String fields = "{\n" +
+                    "  \"update\": {\n" +
+                    "       \"customfield_10029\": [ {\n" +
+                    "  \"set\": \n" +
+                    "   {\n" +
+                    "  \"version\": 1,\n" +
+                    "  \"type\": \"doc\",\n" +
+                    "  \"content\": [\n" +
+
+                    "    {\n" +
+                    "      \"type\": \"paragraph\",\n" +
+                    "      \"content\": [\n" +
+                    "        {\n" +
+                    "          \"type\": \"text\",\n" +
+                    "          \"text\": \"Prova \"\n" +
+                    "        }\n" +
+                    "      ]\n" +
+                    "    },\n" +
+
+                    "    {\n" +
+                    "      \"type\": \"paragraph\",\n" +
+                    "      \"content\": [\n" +
+                    "        {\n" +
+                    "          \"type\": \"text\",\n" +
+                    "          \"text\": \"124536\"\n" +
+                    "        }\n" +
+                    "      ]\n" +
+                    "    }\n" +
+
+                    "  ]\n" +
+                    "}\n" +
+                    "       }\n" +
+                    "       ]\n" +
+                    "  }\n" +
+                    "}";
+            JSONObject content = new JSONObject();
+
+            if(acc_criteriaList != null) {
+                for (String s : acc_criteriaList) {
+                    System.out.println(acc_criteriaList.size());
+                    JSONObject paragraph = new JSONObject();
+                    paragraph.put("type", "paragraph");
+                    JSONObject text = new JSONObject();
+                    JSONObject type = new JSONObject();
+                    type.put("type", "text");
+                    type.put("text", s);
+                    text.put("type", "paragraph");
+                    text.put("content", type);
+                    content.accumulate("", text);
+                }
+            }
+            JSONObject paragraph = new JSONObject();
+            paragraph.put("type", "paragraph");
+            JSONObject text = new JSONObject();
+            JSONObject type = new JSONObject();
+            type.put("type", "text");
+            type.put("text", acc_criteria);
+            text.put("type", "paragraph");
+            text.put("content", type);
+            content.accumulate("", text);
+            System.out.println("HOLA 4 salida");
+            JSONObject acc_issue = new JSONObject();
+            JSONObject field = new JSONObject();
+            JSONObject version = new JSONObject();
+            version.put("version", "1");
+            version.put("type", "doc");
+            version.put("content", content);
+            JSONObject set = new JSONObject();
+            set.put("set", version );
+            field.put("customfield_10029", set);
+            acc_issue.put("update", field);
+            System.out.println(acc_issue);
+            System.out.println(acc_issue.toString().compareTo(fields));
+
+            WebResource webResource = client.resource("https://ariadnavinets.atlassian.net/rest/api/3/issue/" + issue.getIssue_id());
+            con = webResource.header(headerAuthorization, headerAuthorizationValue).type(headerType).accept(headerType).put(ClientResponse.class, fields);
+            int status = con.getStatus();
+            System.out.println(status);
+            if (status != 204) {
+                throw new RuntimeException("Failed : HTTP error code : "
+                        + status);
+            } else {
+                if (acc_criteriaList == null) {
+                    acc_criteriaList = Collections.singletonList(acc_criteria);
+                }
+                else {
+                    acc_criteriaList.add(acc_criteria);
+                }
+                issue.setAcceptance_criteria(acc_criteriaList);
+
+                return new ResponseEntity<>(issue, HttpStatus.OK);
+            }
+        } catch (Exception e) {
+            return new ResponseEntity<>(new ErrorResponse(e.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
 
     @PostMapping("/api/createIssue")
     public ResponseEntity<Object> createIssue(@RequestBody QualityRequirement requirement) throws IOException {
@@ -188,27 +379,34 @@ public class BacklogService {
             fieldsvar.put("project", projectvar);
             fieldsvar.put("summary", requirement.getIssue_summary());
             fieldsvar.put("description", requirement.getIssue_description());
-            fieldsvar.put("duedate", requirement.getDue_date());
-                //Assignee hardcoded
-            JSONObject assignee = new JSONObject();
-            assignee.put("accountId", requirement.getAssignee().getId());
-            fieldsvar.put("assignee", assignee);
+            if(requirement.getDue_date() != null ) fieldsvar.put("duedate", requirement.getDue_date());
+
+            //Assignee
+            if(requirement.getAssignee() != null) {
+                JSONObject assignee = new JSONObject();
+                assignee.put("accountId", requirement.getAssignee().getId());
+                fieldsvar.put("assignee", assignee);
+            }
+
+            //Priority
             if(requirement.getPriority() != null) {
                 JSONObject objPriority = new JSONObject();
                 objPriority.put("name", requirement.getPriority());
                 fieldsvar.put("priority", objPriority);
             }
-            //put sprint on issue
+
+            //Put sprint on issue
+            if(requirement.getSprint() != null ) {
             JSONObject sprint = new JSONObject();
-            System.out.println(requirement.getSprint().getId());
             sprint.put("name", requirement.getSprint().getName());
             sprint.put("id", requirement.getSprint().getId());
             sprint.put("boardId", getBoardId(requirement.getProject_id()));
+            }
 
-            fieldsvar.put("customfield_10020",Integer.valueOf(requirement.getSprint().getId()));
+           // fieldsvar.put("customfield_10020",Integer.valueOf(requirement.getSprint().getId()));
 
             JSONObject issuetype = new JSONObject();
-            issuetype.put("name", requirement.getIssue_type());
+           issuetype.put("name", "Story");
             fieldsvar.put("issuetype", issuetype);
             //final JSON
             JSONObject fields = new JSONObject();
@@ -218,7 +416,6 @@ public class BacklogService {
             WebResource webResource = client.resource("https://ariadnavinets.atlassian.net/rest/api/2/issue");
             response = webResource.header(headerAuthorization, headerAuthorizationValue).type(headerType).accept(headerType).post(ClientResponse.class, fields.toString());
             int statusCode = response.getStatus();
-            System.out.println(statusCode);
 
 
             if (statusCode != 201) {
@@ -234,12 +431,10 @@ public class BacklogService {
                     while ((responseLine = br.readLine()) != null) {
                         resp.append(responseLine.trim());
                     }
-                    System.out.println(resp.toString());
 
                     JsonParser parser = new JsonParser();
                     JsonObject object = parser.parse(resp.toString()).getAsJsonObject();
 
-                    System.out.println(object);
                     newIssue = new SuccessResponse(object.get("id").getAsString(), object.get("self").getAsString());
                     return new ResponseEntity<>(newIssue, HttpStatus.OK);
                 }
