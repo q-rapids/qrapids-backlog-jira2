@@ -1,9 +1,11 @@
 package com.qrapids.backlog_jira.services;
 
+import java.awt.*;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
+import java.lang.reflect.Array;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -11,6 +13,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.util.*;
+import java.util.List;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -20,6 +23,7 @@ import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
 import com.sun.jersey.core.util.Base64;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -157,7 +161,7 @@ public class BacklogService {
                     LocalDate date = LocalDate.parse(milestones.get(i).getDate()); // milestone date
                     firstPhase.setDateFrom(date.minusWeeks(duration).toString());
                     firstPhase.setDateTo(date.toString());
-                    firstPhase.setName("");
+                    firstPhase.setName("Phase " + i);
                     firstPhase.setDescription("");
                     phases.add(firstPhase);
                     // add others phases to the list
@@ -169,7 +173,7 @@ public class BacklogService {
                         Phase newPhase = new Phase();
                         newPhase.setDateFrom(date.minusWeeks(j + duration).toString());
                         newPhase.setDateTo(date.minusWeeks(j).toString());
-                        newPhase.setName("");
+                        newPhase.setName("Phase " + i);
                         newPhase.setDescription("");
                         phases.add(newPhase);
                     }
@@ -252,7 +256,6 @@ public class BacklogService {
     public ResponseEntity<Object> putAcceptanceCriteria(@RequestBody Issue issue,
                                                         @RequestParam String acc_criteria) throws ParseException {
         try {
-            System.out.println("HOLA ENTRO");
             //Create list of acceptante criterias
             List<String> acc_criteriaList = issue.getAcceptance_criteria();
             //Creating the request authentication by username and apiKey
@@ -262,82 +265,52 @@ public class BacklogService {
             final String headerAuthorizationValue = "Basic " + auth;
             final String headerType = "application/json";
             Client client = Client.create();
-            String fields = "{\n" +
-                    "  \"update\": {\n" +
-                    "       \"customfield_10029\": [ {\n" +
-                    "  \"set\": \n" +
-                    "   {\n" +
-                    "  \"version\": 1,\n" +
-                    "  \"type\": \"doc\",\n" +
-                    "  \"content\": [\n" +
-
-                    "    {\n" +
-                    "      \"type\": \"paragraph\",\n" +
-                    "      \"content\": [\n" +
-                    "        {\n" +
-                    "          \"type\": \"text\",\n" +
-                    "          \"text\": \"Prova \"\n" +
-                    "        }\n" +
-                    "      ]\n" +
-                    "    },\n" +
-
-                    "    {\n" +
-                    "      \"type\": \"paragraph\",\n" +
-                    "      \"content\": [\n" +
-                    "        {\n" +
-                    "          \"type\": \"text\",\n" +
-                    "          \"text\": \"124536\"\n" +
-                    "        }\n" +
-                    "      ]\n" +
-                    "    }\n" +
-
-                    "  ]\n" +
-                    "}\n" +
-                    "       }\n" +
-                    "       ]\n" +
-                    "  }\n" +
-                    "}";
             JSONObject content = new JSONObject();
-
+            JSONObject acc_issue = new JSONObject();
+            JSONObject field = new JSONObject();
+            JSONObject version = new JSONObject();
+            version.put("version", 1);
+            version.put("type", "doc");
+            JSONArray items = new JSONArray();
             if(acc_criteriaList != null) {
-                for (String s : acc_criteriaList) {
-                    System.out.println(acc_criteriaList.size());
-                    JSONObject paragraph = new JSONObject();
-                    paragraph.put("type", "paragraph");
-                    JSONObject text = new JSONObject();
-                    JSONObject type = new JSONObject();
-                    type.put("type", "text");
-                    type.put("text", s);
-                    text.put("type", "paragraph");
-                    text.put("content", type);
-                    content.accumulate("", text);
-                }
+                for (String s : acc_criteriaList) { //creation of the acceptance criteria of the issue to JSON
+                    JSONObject paragraph1 = new JSONObject();
+                    paragraph1.put("type", "paragraph");
+                    JSONObject text1 = new JSONObject();
+                    JSONObject type1 = new JSONObject();
+                    type1.put("type", "text");
+                    type1.put("text", s);
+                    JSONArray ja1 = new JSONArray();
+                    ja1.put(type1);
+                    text1.put("type", "paragraph");
+                    text1.put("content", ja1);
+                    items.put(text1);
+                    }
             }
+
             JSONObject paragraph = new JSONObject();
             paragraph.put("type", "paragraph");
             JSONObject text = new JSONObject();
             JSONObject type = new JSONObject();
             type.put("type", "text");
             type.put("text", acc_criteria);
+            JSONArray ja1 = new JSONArray();
+            ja1.put(type);
             text.put("type", "paragraph");
-            text.put("content", type);
-            content.accumulate("", text);
-            System.out.println("HOLA 4 salida");
-            JSONObject acc_issue = new JSONObject();
-            JSONObject field = new JSONObject();
-            JSONObject version = new JSONObject();
-            version.put("version", "1");
-            version.put("type", "doc");
-            version.put("content", content);
+            text.put("content", ja1);
+            items.put(text);
+            JSONArray ja_content = new JSONArray();
+            ja_content.put(content);
+            version.put("content", items);
             JSONObject set = new JSONObject();
             set.put("set", version );
-            field.put("customfield_10029", set);
+            JSONArray ja_set = new JSONArray();
+            ja_set.put(set);
+            field.put("customfield_10029", ja_set);
             acc_issue.put("update", field);
-            System.out.println(acc_issue);
-            System.out.println(acc_issue.toString().compareTo(fields));
 
             WebResource webResource = client.resource("https://ariadnavinets.atlassian.net/rest/api/3/issue/" + issue.getIssue_id());
-            con = webResource.header(headerAuthorization, headerAuthorizationValue).type(headerType).accept(headerType).put(ClientResponse.class, fields);
+            con = webResource.header(headerAuthorization, headerAuthorizationValue).type(headerType).accept(headerType).put(ClientResponse.class, acc_issue.toString());
             int status = con.getStatus();
             System.out.println(status);
             if (status != 204) {
@@ -379,6 +352,7 @@ public class BacklogService {
             fieldsvar.put("project", projectvar);
             fieldsvar.put("summary", requirement.getIssue_summary());
             fieldsvar.put("description", requirement.getIssue_description());
+
             if(requirement.getDue_date() != null ) fieldsvar.put("duedate", requirement.getDue_date());
 
             //Assignee
@@ -405,9 +379,12 @@ public class BacklogService {
 
            // fieldsvar.put("customfield_10020",Integer.valueOf(requirement.getSprint().getId()));
 
-            JSONObject issuetype = new JSONObject();
-           issuetype.put("name", "Story");
-            fieldsvar.put("issuetype", issuetype);
+            if(requirement.getIssue_type() != null ) {
+                JSONObject issuetype = new JSONObject();
+                issuetype.put("name", "Story");
+                fieldsvar.put("issuetype", issuetype);
+            }
+
             //final JSON
             JSONObject fields = new JSONObject();
             fields.put("fields", fieldsvar);
