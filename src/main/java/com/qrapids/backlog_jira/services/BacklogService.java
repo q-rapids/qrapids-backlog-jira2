@@ -30,6 +30,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import static com.sun.org.apache.xalan.internal.xsltc.compiler.util.Type.String;
 
 
 @RestController
@@ -217,8 +218,6 @@ public class BacklogService {
                 in.close();
                 con.close();
 
-                List<QualityRequirement> qualityRequirements = new ArrayList<>();
-
                 JsonParser parser = new JsonParser();
                 JsonObject obj = parser.parse(content.toString()).getAsJsonObject();
                 JsonArray data = obj.getAsJsonArray("issues");
@@ -230,17 +229,19 @@ public class BacklogService {
                     newIssue.setIssue_id(object.get("id").getAsString());
 
                     JsonObject aux = object.getAsJsonObject().get("fields").getAsJsonObject(); //obtencion campos del objeto
-                    newIssue.setIssue_summary(aux.get("summary").getAsString());
+                    newIssue.setIssue_summary(aux.get("summary").isJsonNull() ? null : aux.get("summary").getAsString());
+                    newIssue.setIssue_description(aux.get("description").isJsonNull() ? null : aux.get("description").getAsString());
 
-                    newIssue.setIssue_description(aux.get("description").isJsonNull() ?  null : aux.get("description").getAsString());
-                    System.out.println(newIssue);
-                    int size = aux.get("customfield_10029").getAsJsonArray().size();
-                    List<String> acc_criteria = null;
-                   /* for(int i = 0; i < size; i++) {
-                        newIssue.setAcceptance_criteria(aux.get("customfield_10029").getAsJsonArray());
-                    }
 
-                    issues.add(newIssue);*/
+                    String acc_criteria = aux.get("customfield_10029").isJsonNull() ? null : aux.get("customfield_10029").getAsString();
+                    if (acc_criteria != null) {
+                    List<String> acc_criteriaList = new ArrayList<String>(Arrays.asList(acc_criteria.split("\\n")));
+                    acc_criteriaList.removeIf(s -> s.equals(""));
+                    newIssue.setAcceptance_criteria(acc_criteriaList);
+                }
+
+                    issues.add(newIssue);
+
                 }
 
                 return new ResponseEntity<>(issues, HttpStatus.OK);
@@ -339,7 +340,7 @@ public class BacklogService {
             SuccessResponse newIssue = null;
             //Creating the request authentication by username and apiKey
             ClientResponse response;
-            String auth = new String(Base64.encode(jiraURL + ":" + token ));
+            String auth = new String(Base64.encode(jiraURL + ":" + token));
             final String headerAuthorization = "Authorization";
             final String headerAuthorizationValue = "Basic " + auth;
             final String headerType = "application/json";
@@ -353,33 +354,42 @@ public class BacklogService {
             fieldsvar.put("summary", requirement.getIssue_summary());
             fieldsvar.put("description", requirement.getIssue_description());
 
-            if(requirement.getDue_date() != null ) fieldsvar.put("duedate", requirement.getDue_date());
+            if (requirement.getDue_date() != null) fieldsvar.put("duedate", requirement.getDue_date());
 
             //Assignee
-            if(requirement.getAssignee() != null) {
+            if (requirement.getAssignee() != null) {
                 JSONObject assignee = new JSONObject();
                 assignee.put("accountId", requirement.getAssignee().getId());
                 fieldsvar.put("assignee", assignee);
             }
 
             //Priority
-            if(requirement.getPriority() != null) {
+            if (requirement.getPriority() != null) {
                 JSONObject objPriority = new JSONObject();
                 objPriority.put("name", requirement.getPriority());
                 fieldsvar.put("priority", objPriority);
             }
 
             //Put sprint on issue
-            if(requirement.getSprint() != null ) {
-            JSONObject sprint = new JSONObject();
-            sprint.put("name", requirement.getSprint().getName());
-            sprint.put("id", requirement.getSprint().getId());
-            sprint.put("boardId", getBoardId(requirement.getProject_id()));
-            }
-
-           // fieldsvar.put("customfield_10020",Integer.valueOf(requirement.getSprint().getId()));
+            if (requirement.getSprint() != null) {
+                System.out.println("SPRINT NOT NULL");
+               JSONObject sprint = new JSONObject();
+               System.out.println(requirement.getSprint().getName());
+               System.out.println(requirement.getSprint().getId());
+                sprint.put("name", requirement.getSprint().getName());
+                sprint.put("id", requirement.getSprint().getId());
+                JSONArray ja_sprint = new JSONArray();
+                ja_sprint.put(sprint);
+                System.out.println(ja_sprint);
+                fieldsvar.put("customfield_10020", Integer.valueOf(requirement.getSprint().getId()));
+        }
 
             if(requirement.getIssue_type() != null ) {
+                JSONObject issuetype = new JSONObject();
+                issuetype.put("name", requirement.getIssue_type());
+                fieldsvar.put("issuetype", issuetype);
+            }
+            else {
                 JSONObject issuetype = new JSONObject();
                 issuetype.put("name", "Story");
                 fieldsvar.put("issuetype", issuetype);
@@ -389,6 +399,8 @@ public class BacklogService {
             JSONObject fields = new JSONObject();
             fields.put("fields", fieldsvar);
 
+
+            System.out.println(fields);
             //POST METHOD JIRA
             WebResource webResource = client.resource("https://ariadnavinets.atlassian.net/rest/api/2/issue");
             response = webResource.header(headerAuthorization, headerAuthorizationValue).type(headerType).accept(headerType).post(ClientResponse.class, fields.toString());
