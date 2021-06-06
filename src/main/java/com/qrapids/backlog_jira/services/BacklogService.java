@@ -107,11 +107,11 @@ public class BacklogService {
                                 milestones.add(newMilestone);
                             }
                         } else { // if there is no date_from specified --> we add all milestones with due_date
-                            if(aux.get("description").getAsString().equals("null")) throw new Exception ("Description is null");
+                           // if(aux.get("description").getAsString().equals("null")) throw new Exception ("Description is null");
                             Milestone newMilestone = new Milestone();
-                            newMilestone.setName(aux.get("summary").getAsString());
+                            newMilestone.setName(aux.get("summary").isJsonNull() ? null : aux.get("summary").getAsString());
                             newMilestone.setDate(date);
-                            newMilestone.setDescription(aux.get("description").getAsString());
+                            newMilestone.setDescription(aux.get("description").isJsonNull() ? null : aux.get("description").getAsString());
                             newMilestone.setType("Milestone");
                             milestones.add(newMilestone);
                         }
@@ -230,7 +230,8 @@ public class BacklogService {
 
                     JsonObject aux = object.getAsJsonObject().get("fields").getAsJsonObject(); //obtencion campos del objeto
                     newIssue.setIssue_summary(aux.get("summary").isJsonNull() ? null : aux.get("summary").getAsString());
-                    newIssue.setIssue_description(aux.get("description").isJsonNull() ? null : aux.get("description").getAsString());
+
+
 
 
                     String acc_criteria = aux.get("customfield_10029").isJsonNull() ? null : aux.get("customfield_10029").getAsString();
@@ -335,7 +336,7 @@ public class BacklogService {
 
 
     @PostMapping("/api/createIssue")
-    public ResponseEntity<Object> createIssue(@RequestBody QualityRequirement requirement) throws IOException {
+    public ResponseEntity<Object> createIssue(@RequestBody QualityRequirement requirement) {
         try {
             SuccessResponse newIssue = null;
             //Creating the request authentication by username and apiKey
@@ -352,7 +353,7 @@ public class BacklogService {
             JSONObject fieldsvar = new JSONObject();
             fieldsvar.put("project", projectvar);
             fieldsvar.put("summary", requirement.getIssue_summary());
-            fieldsvar.put("description", requirement.getIssue_description());
+            if(requirement.getIssue_description() != null ) fieldsvar.put("description", requirement.getIssue_description());
 
             if (requirement.getDue_date() != null) fieldsvar.put("duedate", requirement.getDue_date());
 
@@ -383,11 +384,18 @@ public class BacklogService {
                 System.out.println(ja_sprint);
                 fieldsvar.put("customfield_10020", Integer.valueOf(requirement.getSprint().getId()));
         }
-
-            if(requirement.getIssue_type() != null ) {
-                JSONObject issuetype = new JSONObject();
-                issuetype.put("name", requirement.getIssue_type());
-                fieldsvar.put("issuetype", issuetype);
+            String type = requirement.getIssue_type();
+            if(type != null ) {
+                if(type != "Bug" || type != "Story" || type != "Milestone" || type != "Task") {
+                    JSONObject issuetype = new JSONObject();
+                    issuetype.put("name", "Story");
+                    fieldsvar.put("issuetype", issuetype);
+                }
+                else {
+                    JSONObject issuetype = new JSONObject();
+                    issuetype.put("name", requirement.getIssue_type());
+                    fieldsvar.put("issuetype", issuetype);
+                }
             }
             else {
                 JSONObject issuetype = new JSONObject();
