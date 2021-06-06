@@ -162,7 +162,7 @@ public class BacklogService {
                     LocalDate date = LocalDate.parse(milestones.get(i).getDate()); // milestone date
                     firstPhase.setDateFrom(date.minusWeeks(duration).toString());
                     firstPhase.setDateTo(date.toString());
-                    firstPhase.setName("Phase " + i);
+                    firstPhase.setName("");
                     firstPhase.setDescription("");
                     phases.add(firstPhase);
                     // add others phases to the list
@@ -174,7 +174,7 @@ public class BacklogService {
                         Phase newPhase = new Phase();
                         newPhase.setDateFrom(date.minusWeeks(j + duration).toString());
                         newPhase.setDateTo(date.minusWeeks(j).toString());
-                        newPhase.setName("Phase " + i);
+                        newPhase.setName("");
                         newPhase.setDescription("");
                         phases.add(newPhase);
                     }
