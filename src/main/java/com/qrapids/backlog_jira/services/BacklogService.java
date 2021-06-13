@@ -1,13 +1,8 @@
 package com.qrapids.backlog_jira.services;
 
-import java.awt.*;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
-import java.lang.reflect.Array;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -30,17 +25,24 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import static com.sun.org.apache.xalan.internal.xsltc.compiler.util.Type.String;
-
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+
+@CrossOrigin(origins = "*", methods= {RequestMethod.GET,RequestMethod.POST})
 public class BacklogService {
 
-    @Value("${jira.url}")
-    private String jiraURL;
+    @Value("${jira.mail}")
+    private String jiraMAIL;
 
     @Value("${jira.secret}")
     private String token;
+
+    @Value("${jira.url}")
+    private String jiraURL;
 
     @GetMapping("/api/milestones")
     public ResponseEntity<Object> getMilestones(@RequestParam String project_id,
@@ -49,19 +51,17 @@ public class BacklogService {
 
             //Creating the request authentication by username and apiKey
             ClientResponse con;
-            String auth = new String(Base64.encode(jiraURL + ":" + token ));
+            String auth = new String(Base64.encode(jiraMAIL + ":" + token ));
             final String headerAuthorization = "Authorization";
             final String headerAuthorizationValue = "Basic " + auth;
             final String headerType = "application/json";
             Client client = Client.create();
 
             //GET CALL
-            WebResource webResource = client.resource("https://ariadnavinets.atlassian.net/rest/api/2/search?jql=project%3D" + project_id + "%20AND%20issuetype%3DMilestone");
+            WebResource webResource = client.resource( jiraURL + "/rest/api/2/search?jql=project%3D" + project_id + "%20AND%20issuetype%3DMilestone");
             con = webResource.header(headerAuthorization , headerAuthorizationValue).type(headerType).accept(headerType).get(ClientResponse.class);
             int status = con.getStatus();
 
-
-            System.out.println(status);
             // Creating a Request with authentication by token
             // Reading the Response
             if (status != 200) {
@@ -75,39 +75,33 @@ public class BacklogService {
                 while ((inputLine = in.readLine()) != null) {
                     content.append(inputLine);
                 }
-                System.out.println(content.toString());
                 in.close();
                 con.close();
 
                 JsonParser parser = new JsonParser();
                 JsonObject obj = parser.parse(content.toString()).getAsJsonObject();
-
                 JsonArray data = obj.getAsJsonArray("issues");
-
                 int size = obj.getAsJsonObject().get("total").getAsInt();
-
                 List<Milestone> milestones = new ArrayList<>();
 
                 for (int i = 0; i < size; ++i) {
                     JsonObject object = data.get(i).getAsJsonObject(); //first element of milestones
                     JsonObject aux = object.getAsJsonObject().get("fields").getAsJsonObject(); //getting all object fields
                     if (!aux.get("duedate").isJsonNull()) { // check if milestone have due_date
-                        String date = aux.get("duedate").getAsString();
+                        String date =  aux.get("duedate").isJsonNull() ? null : aux.get("duedate").getAsString();
                         if(date_from != null && !date_from.isEmpty()) {
                             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
                             Date from = sdf.parse(date_from);
                             Date due = sdf.parse(date);
                             if (due.equals(from) || due.after(from)) { // only add milestones which will finish after date_from
                                 Milestone newMilestone = new Milestone();
-                                newMilestone.setName(aux.get("summary").getAsString());
+                                newMilestone.setName(aux.get("summary").isJsonNull() ? null : aux.get("summary").getAsString());
                                 newMilestone.setDate(date);
-                                newMilestone.setDescription(aux.get("description").getAsString());
+                                newMilestone.setDescription(aux.get("description").isJsonNull() ? null : aux.get("description").getAsString());
                                 newMilestone.setType("Milestone");
-                                System.out.println(newMilestone.toString());
                                 milestones.add(newMilestone);
                             }
                         } else { // if there is no date_from specified --> we add all milestones with due_date
-                           // if(aux.get("description").getAsString().equals("null")) throw new Exception ("Description is null");
                             Milestone newMilestone = new Milestone();
                             newMilestone.setName(aux.get("summary").isJsonNull() ? null : aux.get("summary").getAsString());
                             newMilestone.setDate(date);
@@ -134,7 +128,6 @@ public class BacklogService {
         int numWeeks = 10;
         int duration = 1;
         if (milestonesList.getStatusCode() == HttpStatus.OK) {
-
             List<Milestone> milestones = (List<Milestone>) milestonesList.getBody();
             List<Phase> phases = new ArrayList<>();
             if (milestones.isEmpty())
@@ -193,13 +186,13 @@ public class BacklogService {
         try {
             //Creating the request authentication by username and apiKey
             ClientResponse con;
-            String auth = new String(Base64.encode(jiraURL + ":" + token));
+            String auth = new String(Base64.encode(jiraMAIL + ":" + token));
             final String headerAuthorization = "Authorization";
             final String headerAuthorizationValue = "Basic " + auth;
             final String headerType = "application/json";
             Client client = Client.create();
 
-            WebResource webResource = client.resource("https://ariadnavinets.atlassian.net/rest/api/2/search?project=" + project_id);
+            WebResource webResource = client.resource(jiraURL + "/rest/api/2/search?project=" + project_id);
             con = webResource.header(headerAuthorization, headerAuthorizationValue).type(headerType).accept(headerType).get(ClientResponse.class);
             int status = con.getStatus();
             System.out.println(status);
@@ -231,20 +224,14 @@ public class BacklogService {
                     JsonObject aux = object.getAsJsonObject().get("fields").getAsJsonObject(); //obtencion campos del objeto
                     newIssue.setIssue_summary(aux.get("summary").isJsonNull() ? null : aux.get("summary").getAsString());
 
-
-
-
                     String acc_criteria = aux.get("customfield_10029").isJsonNull() ? null : aux.get("customfield_10029").getAsString();
                     if (acc_criteria != null) {
                     List<String> acc_criteriaList = new ArrayList<String>(Arrays.asList(acc_criteria.split("\\n")));
                     acc_criteriaList.removeIf(s -> s.equals(""));
                     newIssue.setAcceptance_criteria(acc_criteriaList);
                 }
-
                     issues.add(newIssue);
-
                 }
-
                 return new ResponseEntity<>(issues, HttpStatus.OK);
             }
 
@@ -262,7 +249,7 @@ public class BacklogService {
             List<String> acc_criteriaList = issue.getAcceptance_criteria();
             //Creating the request authentication by username and apiKey
             ClientResponse con;
-            String auth = new String(Base64.encode(jiraURL + ":" + token));
+            String auth = new String(Base64.encode(jiraMAIL + ":" + token));
             final String headerAuthorization = "Authorization";
             final String headerAuthorizationValue = "Basic " + auth;
             final String headerType = "application/json";
@@ -311,7 +298,7 @@ public class BacklogService {
             field.put("customfield_10029", ja_set);
             acc_issue.put("update", field);
 
-            WebResource webResource = client.resource("https://ariadnavinets.atlassian.net/rest/api/3/issue/" + issue.getIssue_id());
+            WebResource webResource = client.resource(jiraURL + "/rest/api/3/issue/" + issue.getIssue_id());
             con = webResource.header(headerAuthorization, headerAuthorizationValue).type(headerType).accept(headerType).put(ClientResponse.class, acc_issue.toString());
             int status = con.getStatus();
             System.out.println(status);
@@ -341,12 +328,13 @@ public class BacklogService {
             SuccessResponse newIssue = null;
             //Creating the request authentication by username and apiKey
             ClientResponse response;
-            String auth = new String(Base64.encode(jiraURL + ":" + token));
+            String auth = new String(Base64.encode(jiraMAIL + ":" + token));
             final String headerAuthorization = "Authorization";
             final String headerAuthorizationValue = "Basic " + auth;
             final String headerType = "application/json";
 
             Client client = Client.create();
+
             //fields of project
             JSONObject projectvar = new JSONObject();
             projectvar.put("key", requirement.getProject_id());
@@ -354,54 +342,42 @@ public class BacklogService {
             fieldsvar.put("project", projectvar);
             fieldsvar.put("summary", requirement.getIssue_summary());
             if(requirement.getIssue_description() != null ) fieldsvar.put("description", requirement.getIssue_description());
-
-            if (requirement.getDue_date() != null) fieldsvar.put("duedate", requirement.getDue_date());
-
+            if(requirement.getDue_date() != null) fieldsvar.put("duedate", requirement.getDue_date());
             //Assignee
             if (requirement.getAssignee() != null) {
                 JSONObject assignee = new JSONObject();
                 assignee.put("accountId", requirement.getAssignee().getId());
                 fieldsvar.put("assignee", assignee);
             }
-
             //Priority
             if (requirement.getPriority() != null) {
                 JSONObject objPriority = new JSONObject();
                 objPriority.put("name", requirement.getPriority());
                 fieldsvar.put("priority", objPriority);
             }
-
             //Put sprint on issue
             if (requirement.getSprint() != null) {
-                System.out.println("SPRINT NOT NULL");
                JSONObject sprint = new JSONObject();
-               System.out.println(requirement.getSprint().getName());
-               System.out.println(requirement.getSprint().getId());
                 sprint.put("name", requirement.getSprint().getName());
                 sprint.put("id", requirement.getSprint().getId());
                 JSONArray ja_sprint = new JSONArray();
                 ja_sprint.put(sprint);
-                System.out.println(ja_sprint);
                 fieldsvar.put("customfield_10020", Integer.valueOf(requirement.getSprint().getId()));
         }
             String type = requirement.getIssue_type();
+            JSONObject issuetype = new JSONObject();
             if(type != null ) {
                 if(type != "Bug" || type != "Story" || type != "Milestone" || type != "Task") {
-                    JSONObject issuetype = new JSONObject();
                     issuetype.put("name", "Story");
-                    fieldsvar.put("issuetype", issuetype);
                 }
                 else {
-                    JSONObject issuetype = new JSONObject();
                     issuetype.put("name", requirement.getIssue_type());
-                    fieldsvar.put("issuetype", issuetype);
                 }
             }
             else {
-                JSONObject issuetype = new JSONObject();
                 issuetype.put("name", "Story");
-                fieldsvar.put("issuetype", issuetype);
             }
+            fieldsvar.put("issuetype", issuetype);
 
             //final JSON
             JSONObject fields = new JSONObject();
@@ -410,7 +386,7 @@ public class BacklogService {
 
             System.out.println(fields);
             //POST METHOD JIRA
-            WebResource webResource = client.resource("https://ariadnavinets.atlassian.net/rest/api/2/issue");
+            WebResource webResource = client.resource(jiraURL + "/rest/api/2/issue");
             response = webResource.header(headerAuthorization, headerAuthorizationValue).type(headerType).accept(headerType).post(ClientResponse.class, fields.toString());
             int statusCode = response.getStatus();
 
@@ -445,13 +421,13 @@ public class BacklogService {
         try {
             //Creating the request authentication by username and apiKey
             ClientResponse con;
-            String auth = new String(Base64.encode(jiraURL + ":" + token));
+            String auth = new String(Base64.encode(jiraMAIL + ":" + token));
             final String headerAuthorization = "Authorization";
             final String headerAuthorizationValue = "Basic " + auth;
             final String headerType = "application/json";
             Client client = Client.create();
 
-            WebResource webResource = client.resource("https://ariadnavinets.atlassian.net/rest/api/2/user/assignable/search?project=" + project_id);
+            WebResource webResource = client.resource(jiraURL + "/rest/api/2/user/assignable/search?project=" + project_id);
             con = webResource.header(headerAuthorization, headerAuthorizationValue).type(headerType).accept(headerType).get(ClientResponse.class);
             int status = con.getStatus();
             System.out.println(status);
@@ -466,7 +442,6 @@ public class BacklogService {
                 while ((inputLine = in.readLine()) != null) {
                     content.append(inputLine);
                 }
-                System.out.println(content.toString());
                 in.close();
                 con.close();
 
@@ -497,7 +472,7 @@ public class BacklogService {
         try {
             //Creating the request authentication by username and apiKey
             ClientResponse con;
-            String auth = new String(Base64.encode(jiraURL + ":" + token));
+            String auth = new String(Base64.encode(jiraMAIL + ":" + token));
             final String headerAuthorization = "Authorization";
             final String headerAuthorizationValue = "Basic " + auth;
             final String headerType = "application/json";
@@ -505,7 +480,7 @@ public class BacklogService {
 
             int id = getBoardId(project_id);
 
-            WebResource webResource = client.resource("https://ariadnavinets.atlassian.net/rest/agile/1.0/board/" + id + "/sprint");
+            WebResource webResource = client.resource(jiraURL + "/rest/agile/1.0/board/" + id + "/sprint");
             con = webResource.header(headerAuthorization, headerAuthorizationValue).type(headerType).accept(headerType).get(ClientResponse.class);
             int status = con.getStatus();
             System.out.println(status);
@@ -552,13 +527,13 @@ public class BacklogService {
     private int getBoardId(String project_id) throws IOException {
         int id;
         ClientResponse con;
-        String auth = new String(Base64.encode(jiraURL + ":" + token));
+        String auth = new String(Base64.encode(jiraMAIL + ":" + token));
         final String headerAuthorization = "Authorization";
         final String headerAuthorizationValue = "Basic " + auth;
         final String headerType = "application/json";
         Client client = Client.create();
 
-        WebResource webResource = client.resource("https://ariadnavinets.atlassian.net/rest/agile/1.0/board?projectKeyOrId=" + project_id);
+        WebResource webResource = client.resource(jiraURL + "/rest/agile/1.0/board?projectKeyOrId=" + project_id);
         con = webResource.header(headerAuthorization, headerAuthorizationValue).type(headerType).accept(headerType).get(ClientResponse.class);
         int status = con.getStatus();
         System.out.println(status);
