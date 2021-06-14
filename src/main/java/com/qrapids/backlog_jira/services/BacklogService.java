@@ -195,7 +195,7 @@ public class BacklogService {
             WebResource webResource = client.resource(jiraURL + "/rest/api/2/search?project=" + project_id);
             con = webResource.header(headerAuthorization, headerAuthorizationValue).type(headerType).accept(headerType).get(ClientResponse.class);
             int status = con.getStatus();
-            System.out.println(status);
+
             if (status != 200) {
                 throw new RuntimeException("Failed : HTTP error code : "
                         + status);
@@ -301,7 +301,7 @@ public class BacklogService {
             WebResource webResource = client.resource(jiraURL + "/rest/api/3/issue/" + issue.getIssue_id());
             con = webResource.header(headerAuthorization, headerAuthorizationValue).type(headerType).accept(headerType).put(ClientResponse.class, acc_issue.toString());
             int status = con.getStatus();
-            System.out.println(status);
+
             if (status != 204) {
                 throw new RuntimeException("Failed : HTTP error code : "
                         + status);
@@ -383,8 +383,6 @@ public class BacklogService {
             JSONObject fields = new JSONObject();
             fields.put("fields", fieldsvar);
 
-
-            System.out.println(fields);
             //POST METHOD JIRA
             WebResource webResource = client.resource(jiraURL + "/rest/api/2/issue");
             response = webResource.header(headerAuthorization, headerAuthorizationValue).type(headerType).accept(headerType).post(ClientResponse.class, fields.toString());
@@ -430,7 +428,6 @@ public class BacklogService {
             WebResource webResource = client.resource(jiraURL + "/rest/api/2/user/assignable/search?project=" + project_id);
             con = webResource.header(headerAuthorization, headerAuthorizationValue).type(headerType).accept(headerType).get(ClientResponse.class);
             int status = con.getStatus();
-            System.out.println(status);
             if (status != 200) {
                 throw new RuntimeException("Failed : HTTP error code : "
                         + status);
@@ -450,7 +447,6 @@ public class BacklogService {
                 JsonArray obj = parser.parse(content.toString()).getAsJsonArray();
 
                 List<Assignee> assignees = new ArrayList<>();
-                System.out.println(obj.size());
 
                 for (int i = 0; i < obj.size(); ++i) {
                     JsonObject object = obj.get(i).getAsJsonObject(); //primer elemento de milestones
@@ -483,8 +479,6 @@ public class BacklogService {
             WebResource webResource = client.resource(jiraURL + "/rest/agile/1.0/board/" + id + "/sprint");
             con = webResource.header(headerAuthorization, headerAuthorizationValue).type(headerType).accept(headerType).get(ClientResponse.class);
             int status = con.getStatus();
-            System.out.println(status);
-            System.out.println(id);
             if (status != 200) {
                 throw new RuntimeException("Failed : HTTP error code : "
                         + status);
@@ -496,7 +490,6 @@ public class BacklogService {
                 while ((inputLine = in.readLine()) != null) {
                     content.append(inputLine);
                 }
-                System.out.println(content.toString());
                 in.close();
                 con.close();
 
@@ -505,9 +498,7 @@ public class BacklogService {
 
                 JsonArray obj = data.getAsJsonArray("values");
 
-                System.out.println(obj.toString());
                 List<Sprint> sprints = new ArrayList<>();
-                System.out.println(obj.size());
 
                 for (int i = 0; i < obj.size(); ++i) {
                     JsonObject object = obj.get(i).getAsJsonObject(); //primer elemento de milestones
@@ -536,7 +527,6 @@ public class BacklogService {
         WebResource webResource = client.resource(jiraURL + "/rest/agile/1.0/board?projectKeyOrId=" + project_id);
         con = webResource.header(headerAuthorization, headerAuthorizationValue).type(headerType).accept(headerType).get(ClientResponse.class);
         int status = con.getStatus();
-        System.out.println(status);
 
 
         if (status != 200) {
@@ -550,7 +540,6 @@ public class BacklogService {
             while ((inputLine = in.readLine()) != null) {
                 content.append(inputLine);
             }
-            System.out.println(content.toString());
             in.close();
             con.close();
 
