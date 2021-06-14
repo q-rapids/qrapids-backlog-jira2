@@ -557,9 +557,8 @@ public class BacklogService {
             JsonParser parser = new JsonParser();
             JsonObject obj = parser.parse(content.toString()).getAsJsonObject();
             JsonArray data = obj.getAsJsonArray("values");
-
-                JsonObject object = data.get(0).getAsJsonObject();
-                id = object.get("id").getAsInt();
+            JsonObject object = data.get(0).getAsJsonObject();
+            id = object.get("id").getAsInt();
             }
             return id;
         }
