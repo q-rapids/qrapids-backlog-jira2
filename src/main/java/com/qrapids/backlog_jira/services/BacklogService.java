@@ -44,6 +44,9 @@ public class BacklogService {
     @Value("${jira.url}")
     private String jiraURL;
 
+    @Value("${jira.accriteria}")
+    private String jiraaccriteria;
+
     @GetMapping("/api/milestones")
     public ResponseEntity<Object> getMilestones(@RequestParam String project_id,
                                                 @RequestParam(value = "date_from", required = false) String date_from) {
@@ -214,17 +217,42 @@ public class BacklogService {
                 JsonParser parser = new JsonParser();
                 JsonObject obj = parser.parse(content.toString()).getAsJsonObject();
                 JsonArray data = obj.getAsJsonArray("issues");
-                List<Issue> issues = new ArrayList<>();
+                List<QualityRequirement> issues = new ArrayList<>();
 
                 for (int i = 0; i < data.size(); ++i) {
                     JsonObject object = data.get(i).getAsJsonObject(); //primer elemento de milestones
-                    Issue newIssue = new Issue();
+                    QualityRequirement newIssue = new QualityRequirement();
                     newIssue.setIssue_id(object.get("id").getAsString());
 
                     JsonObject aux = object.getAsJsonObject().get("fields").getAsJsonObject(); //obtencion campos del objeto
                     newIssue.setIssue_summary(aux.get("summary").isJsonNull() ? null : aux.get("summary").getAsString());
+                    newIssue.setProject_id(project_id);
 
                     String acc_criteria = aux.get("customfield_10029").isJsonNull() ? null : aux.get("customfield_10029").getAsString();
+                    newIssue.setDue_date(aux.get("duedate").isJsonNull() ? null : aux.get("duedate").getAsString());
+                   /*if(!aux.get("customfield_10020").isJsonNull()){
+                        Sprint sprint= new Sprint();
+                        JsonObject aux1 = aux.get("customfield_10020");
+                               // get("customfield_10020").getAsJsonObject();
+                        sprint.setId(aux1.get("id").getAsString());
+                        sprint.setName(aux1.get("name").getAsString());
+                        newIssue.setSprint(sprint);
+                    }*/
+                    JsonObject auxIssue = aux.getAsJsonObject().get("issuetype").getAsJsonObject(); //obtencion campos del objeto
+                    newIssue.setIssue_type(auxIssue.get("name").isJsonNull() ? null : auxIssue.get("name").getAsString());
+                    newIssue.setIssue_description(aux.get("description").isJsonNull() ? null : aux.get("description").getAsString());
+
+                    JsonObject auxpriority = aux.getAsJsonObject().get("priority").getAsJsonObject(); //obtencion campos del objeto
+                    newIssue.setPriority(auxpriority.get("name").getAsString());
+
+                    if(!aux.get("assignee").isJsonNull()){
+                        Assignee assignee = new Assignee();
+                        JsonObject aux1 = aux.get("assignee").getAsJsonObject();
+                        assignee.setId(aux1.get("accountId").getAsString());
+                        assignee.setName(aux1.get("displayName").getAsString());
+                        newIssue.setAssignee(assignee);
+                    }
+
                     if (acc_criteria != null) {
                     List<String> acc_criteriaList = new ArrayList<String>(Arrays.asList(acc_criteria.split("\\n")));
                     acc_criteriaList.removeIf(s -> s.equals(""));
@@ -242,7 +270,7 @@ public class BacklogService {
 
 
     @PutMapping("/api/acceptancecriteria")
-    public ResponseEntity<Object> putAcceptanceCriteria(@RequestBody Issue issue,
+    public ResponseEntity<Object> putAcceptanceCriteria(@RequestBody QualityRequirement issue,
                                                         @RequestParam String acc_criteria) throws ParseException {
         try {
             //Create list of acceptante criterias
@@ -295,7 +323,7 @@ public class BacklogService {
             set.put("set", version );
             JSONArray ja_set = new JSONArray();
             ja_set.put(set);
-            field.put("customfield_10029", ja_set);
+            field.put(jiraaccriteria, ja_set);
             acc_issue.put("update", field);
 
             WebResource webResource = client.resource(jiraURL + "/rest/api/3/issue/" + issue.getIssue_id());
